@@ -1,14 +1,14 @@
 #!/usr/bin/python3
 
 import sys
+import os
 import subprocess
 import cgi
 
 print("Content-type: text/html\n\n")
 print("<html>")
 
-def eu_get_arg():
-    # args = sys.argv
+def get_arg():
     args = cgi.FieldStorage()
     val = args.getvalue("c", "nop")
 
@@ -27,13 +27,17 @@ def cria_arquivo(qnt_times):
     R = 1
     RT = 1
 
+    # Calculo de rodadas
     calc_k = (qnt_times*2)
 
+    # calculo diferente com quantidade par
     if qnt_times%2 == 0:
         calc_k -= 2
 
-
-    file = open("torneio.mod", "w")
+    # Criando o arquivo especifico para o usuario
+    ip = cgi.escape(os.environ["REMOTE_ADDR"]).replace(".","-")
+    filename = "torneio" + ip + ".mod"
+    file = open(filename, "w")
 
     # Variaveis
     file.write("/* Variaveis de decisao */\n")
@@ -128,15 +132,20 @@ def cria_arquivo(qnt_times):
     file.write("\n")
     file.write("end;\n")
     file.close()
+    return filename
 
 
-# criando
-cria_arquivo(eu_get_arg())
+# Criando o Arquivo
+temp_file_name = cria_arquivo(get_arg())
+temp_sol_filename = temp_file_name[:-4]+".sol"
 
-# CHAMADA
-sp = subprocess.call("glpsol -m torneio.mod -o torneio.sol", shell=True, stdout=subprocess.PIPE)
+# Chamada do GLPSOL
+sp = subprocess.call("glpsol -m " + temp_file_name + \
+    " -o " + temp_sol_filename, \
+    shell=True, stdout=subprocess.PIPE)
 
-with open("torneio.sol", 'r') as f:
+# Leitura formatada
+with open(temp_sol_filename, 'r') as f:
     b = False
 
     for linha in f:
@@ -157,5 +166,7 @@ with open("torneio.sol", 'r') as f:
 
                 print("{0} {1} {2}".format(cnt1, cnt2, cnt3))
 
+# Deletando os arquivos
+os.delete(temp_file_name)
+os.delete(temp_sol_filename)
 print("</html>")
-
